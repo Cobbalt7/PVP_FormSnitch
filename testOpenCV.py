@@ -23,21 +23,21 @@ def test_indices():
             print(f"Index {i}: NOT AVAILABLE")
 
 def draw_landmarks_on_image(rgb_image, detection_result):
-  pose_landmarks_list = detection_result.pose_landmarks
-  annotated_image = np.copy(rgb_image)
+   pose_landmarks_list = detection_result.pose_landmarks
+   annotated_image = np.copy(rgb_image)
 
-  pose_landmark_style = drawing_styles.get_default_pose_landmarks_style()
-  pose_connection_style = drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2)
+   pose_landmark_style = drawing_styles.get_default_pose_landmarks_style()
+   pose_connection_style = drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2)
 
-  for pose_landmarks in pose_landmarks_list:
-    drawing_utils.draw_landmarks(
-        image=annotated_image,
-        landmark_list=pose_landmarks,
-        connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
-        landmark_drawing_spec=pose_landmark_style,
-        connection_drawing_spec=pose_connection_style)
+   for pose_landmarks in pose_landmarks_list:
+      drawing_utils.draw_landmarks(
+      image=annotated_image,
+      landmark_list=pose_landmarks,
+      connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
+      landmark_drawing_spec=pose_landmark_style,
+      connection_drawing_spec=pose_connection_style)
 
-  return annotated_image
+   return annotated_image
 
 class landmarker_and_result():
    def __init__(self):
