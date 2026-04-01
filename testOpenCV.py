@@ -90,7 +90,6 @@ def main():
       cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
       
    elif platform.system() == 'Windows':
-      os.environ["QT_QPA_PLATFORM"] = "xcb"
       # access webcam
       cap1 = cv2.VideoCapture(0, cv2.CAP_DSHOW)
       cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
