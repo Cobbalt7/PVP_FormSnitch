@@ -1,5 +1,6 @@
 import time
 import cv2
+import platform
 import mediapipe as mp
 import numpy as np
 from mediapipe.tasks.python.vision import drawing_utils
@@ -72,23 +73,36 @@ class landmarker_and_result():
 
 def main():
    #test_indices()
-   # Force Qt to use X11/XWayland
-   os.environ["QT_QPA_PLATFORM"] = "xcb"
-   # Setting which camera to display
+    # Setting which camera to display
    camera1 = True
-   # access webcam
-   cap1 = cv2.VideoCapture(0, cv2.CAP_V4L2)
-   cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-   cap1.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-   cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+   # Force Qt to use X11/XWayland
+   if platform.system() == 'Linux':
+      os.environ["QT_QPA_PLATFORM"] = "xcb"
+      # access webcam
+      cap1 = cv2.VideoCapture(0, cv2.CAP_V4L2)
+      cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+      cap1.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+      cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+      cap2 = cv2.VideoCapture(2, cv2.CAP_V4L2)
+      cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+      cap2.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+      cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+      
+   elif platform.system() == 'Windows':
+      os.environ["QT_QPA_PLATFORM"] = "xcb"
+      # access webcam
+      cap1 = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+      cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+      cap1.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+      cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+      cap2 = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+      cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+      cap2.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+      cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
    # create landmarker
    pose_landmarker1 = landmarker_and_result()
-   
-   cap2 = cv2.VideoCapture(2, cv2.CAP_V4L2)
-   cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-   cap2.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-   cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-   # create landmarker
    pose_landmarker2 = landmarker_and_result()
    
    
