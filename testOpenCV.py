@@ -7,6 +7,7 @@ from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import drawing_styles
 from mediapipe.tasks.python import vision
 import os
+import calibration
 
 # Squat counting / feedback
 squat_counter = 0
@@ -182,42 +183,66 @@ def main():
     global squat_counter, squat_stage, feedback
     global prev_knee_angle, prev_back_angle
 
-    # test_indices()
+    # Setting which camera to display
+    camera1 = True
 
     if platform.system() == 'Linux':
         os.environ["QT_QPA_PLATFORM"] = "xcb"
-        cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        cap1 = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        cap2 = cv2.VideoCapture(2, cv2.CAP_V4L2)
     elif platform.system() == 'Windows':
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        cap1 = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        cap2 = cv2.VideoCapture(1, cv2.CAP_DSHOW)
     else:
-        cap = cv2.VideoCapture(0)
+        cap1 = cv2.VideoCapture(0)
+        cap1 = cv2.VideoCapture(1)
 
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    cap1.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    cap2.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap2.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-    if not cap.isOpened():
+    if not cap1.isOpened() or not cap2.isOpened():
         print("Camera could not be opened")
         return
 
-    pose_landmarker = LandmarkerAndResult()
+    pose_landmarker1 = LandmarkerAndResult()
+    pose_landmarker2 = LandmarkerAndResult()
 
     # Warm up camera
     for _ in range(5):
-        cap.read()
+        cap1.read()
 
+    #calibration.calibrate_cameras(cap1, cap2)
+    
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to read frame from camera")
+        ret1, frame1 = cap1.read()
+        if not ret1:
+            print("Failed to read frame from camera 1")
             break
 
-        frame = cv2.flip(frame, 1)
-        pose_landmarker.detect_async(frame)
-
-        if pose_landmarker.result is not None and len(pose_landmarker.result.pose_landmarks) > 0:
-            landmarks = pose_landmarker.result.pose_landmarks[0]
-
+        frame1 = cv2.flip(frame1, 1)
+        pose_landmarker1.detect_async(frame1)
+        
+        ret2, frame2 = cap2.read()
+        if not ret2:
+            print("Failed to read frame from camera 1")
+            break
+        
+        frame2 = cv2.flip(frame2, 1)
+        pose_landmarker2.detect_async(frame2)
+        if camera1:
+            if pose_landmarker1.result is not None and len(pose_landmarker1.result.pose_landmarks) > 0:
+                landmarks = pose_landmarker1.result.pose_landmarks[0]
+                frame = frame1
+        else:
+            if pose_landmarker2.result is not None and len(pose_landmarker2.result.pose_landmarks) > 0:
+                landmarks = pose_landmarker2.result.pose_landmarks[0]
+                frame = frame2
+        
+        if landmarks is not None:
             prev_knee_angle, prev_back_angle, squat_stage, squat_counter, feedback = analyze_squat(
                 landmarks,
                 prev_knee_angle,
@@ -225,8 +250,10 @@ def main():
                 squat_stage,
                 squat_counter
             )
-
-            frame = draw_landmarks_on_image(frame, pose_landmarker.result)
+            if camera1:
+                frame = draw_landmarks_on_image(frame, pose_landmarker1.result)
+            else:
+                frame = draw_landmarks_on_image(frame, pose_landmarker2.result)
             draw_landmark_indices(frame, landmarks)
             draw_analysis_lines(frame, landmarks)
 
@@ -251,11 +278,14 @@ def main():
         cv2.imshow('Squat Form Detection', frame)
 
         key = cv2.waitKey(1)
-        if key == ord('q'):
+        if key == ord('s'):
+            camera1 = not camera1
+        elif key == ord('q'):
             break
 
-    pose_landmarker.close()
-    cap.release()
+    pose_landmarker1.close()
+    cap1.release()
+    cap2.release()
     cv2.destroyAllWindows()
 
 
