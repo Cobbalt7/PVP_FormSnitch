@@ -1,39 +1,81 @@
 import cv2
+from cv2.typing import MatLike
 import mediapipe as mp
 import numpy as np
+import platform
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
 
-# For webcam input:
-cap = cv2.VideoCapture(0)
-with mp_pose.Pose(
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5) as pose:
-  while cap.isOpened():
-    success, image = cap.read()
-    if not success:
-      print("Ignoring empty camera frame.")
-      # If loading a video, use 'break' instead of 'continue'.
-      continue
-
+def infer_pose(image: MatLike, pose):
     # To improve performance, optionally mark the image as not writeable to
     # pass by reference.
     image.flags.writeable = False
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = pose.process(image)
+    return pose.process(image)
 
+def draw_landmarks(image: MatLike, pose_results):
     # Draw the pose annotation on the image.
     image.flags.writeable = True
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     mp_drawing.draw_landmarks(
         image,
-        results.pose_landmarks,
+        pose_results.pose_landmarks,
         mp_pose.POSE_CONNECTIONS,
         landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
     # Flip the image horizontally for a selfie-view display.
     cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
+
+cam2_present = False
+cam1_fail = False
+cam2_fail = False
+cam1_view = True
+
+if platform.system() == 'Linux':
+    cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    cap2 = cv2.VideoCapture(2, cv2.CAP_V4L2)
+    cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+elif platform.system() == 'Windows':
+      cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+      cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+      cap2 = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+      cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+if cap2.isOpened():
+    cam2_present = True
+else:
+    cap2.release()
+pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+pose2 = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+while cap.isOpened():
+    success, image = cap.read()
+    if cam2_present:
+        success2, image2 = cap2.read()
+    if not success:
+        print("Ignoring empty camera frame.")
+        # If loading a video, use 'break' instead of 'continue'.
+        cam1_fail = True
+    elif cam2_present and not success2:
+        print("Ignoring empty camera frame.")
+        # If loading a video, use 'break' instead of 'continue'.
+        cam2_fail = True
+        
+    if not cam1_fail:
+        results = infer_pose(image, pose)
+        
+    if cam2_present and not cam2_fail:
+        results2 = infer_pose(image2, pose2)
+    
+    if cam1_view and not cam1_fail:
+        draw_landmarks(image, results)
+    elif not cam1_view and not cam2_fail:
+        draw_landmarks(image2, results2)
+    
     key = cv2.waitKey(1)
     if key == ord('q'):
-      break
+        break
+    elif key == ord('s') and cam2_present:
+        cam1_view = not cam1_view
+    cam1_fail = False
+    cam2_fail = False
 cap.release()
