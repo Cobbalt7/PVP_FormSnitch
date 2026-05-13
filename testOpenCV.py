@@ -25,22 +25,31 @@ def draw_landmarks(image: MatLike, pose_results):
         landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
     # Flip the image horizontally for a selfie-view display.
     cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
+    
+def setup_cams(platform):
+    match platform:
+        case 'Linux':
+            capture_arg = cv2.CAP_V4L2
+            second_cam_num = 2
+        case 'Windows':
+            capture_arg = cv2.CAP_DSHOW
+            second_cam_num = 1
+        case _:
+            capture_arg = cv2.CAP_V4L2
+    cap = cv2.VideoCapture(0, capture_arg)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    cap2 = cv2.VideoCapture(second_cam_num, capture_arg)
+    cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    return cap, cap2
+    
 
 cam2_present = False
 cam1_fail = False
 cam2_fail = False
 cam1_view = True
 
-if platform.system() == 'Linux':
-    cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-    cap2 = cv2.VideoCapture(2, cv2.CAP_V4L2)
-    cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-elif platform.system() == 'Windows':
-      cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-      cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-      cap2 = cv2.VideoCapture(1, cv2.CAP_DSHOW)
-      cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+cap, cap2 = setup_cams(platform.system())
+
 if cap2.isOpened():
     cam2_present = True
 else:
