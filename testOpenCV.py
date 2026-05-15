@@ -3,6 +3,7 @@ from cv2.typing import MatLike
 import mediapipe as mp
 import numpy as np
 import platform
+import calibration
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
@@ -47,6 +48,10 @@ cam2_present = False
 cam1_fail = False
 cam2_fail = False
 cam1_view = True
+proj_mat = np.array( [[1, 0, 0, 0],
+                            [0, 1, 0, 0],
+                            [0, 0, 1, 0]], dtype=np.float32)
+proj_mat2 = proj_mat.copy()
 
 cap, cap2 = setup_cams(platform.system())
 
@@ -85,6 +90,8 @@ while cap.isOpened():
         break
     elif key == ord('s') and cam2_present:
         cam1_view = not cam1_view
+    elif key == ord('c') and cam2_present:
+        proj_mat, proj_mat2 = calibration.calibrate_cameras(cap, cap2)
     cam1_fail = False
     cam2_fail = False
 cap.release()
