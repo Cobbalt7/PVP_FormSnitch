@@ -76,7 +76,6 @@ def calibrate_cameras(cam1: VideoCapture, cam2: VideoCapture):
    images1 = []
    images2 = []
    for i in range(0,30):
-      time.sleep(0.030)
       ret, frame = cam1.read()
       if ret:
          images1.append(frame)
