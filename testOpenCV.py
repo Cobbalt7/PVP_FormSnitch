@@ -48,9 +48,9 @@ cam2_present = False
 cam1_fail = False
 cam2_fail = False
 cam1_view = True
-proj_mat = np.array( [[1, 0, 0, 0],
-                            [0, 1, 0, 0],
-                            [0, 0, 1, 0]], dtype=np.float32)
+proj_mat =np.array([[1, 0, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 0, 1, 0]], dtype=np.float32)
 proj_mat2 = proj_mat.copy()
 
 cap, cap2 = setup_cams(platform.system())

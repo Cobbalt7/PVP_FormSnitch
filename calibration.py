@@ -1,9 +1,13 @@
 import cv2
+from cv2 import VideoCapture
 import numpy as np
+import time
+
+# Define the dimensions of checkerboard
+CHECKERBOARD = (5, 8)
 
 def detect_chessboard(im):
    corners = []
-   CHECKERBOARD = (6, 9)
    # Find the chess board corners
    # If desired number of corners are
    # found in the image then ret = true
@@ -49,8 +53,6 @@ def parse_images(images1, images2, obj3d, imgcnt):
    return points3d, points2d1, points2d2
 
 def calibrate_cameras(cam1: VideoCapture, cam2: VideoCapture):
-   # Define the dimensions of checkerboard
-   CHECKERBOARD = (6, 9)
    # stop the iteration when specified
    # accuracy, epsilon, is reached or
    # specified number of iterations are completed.
@@ -74,6 +76,7 @@ def calibrate_cameras(cam1: VideoCapture, cam2: VideoCapture):
    images1 = []
    images2 = []
    for i in range(0,30):
+      time.sleep(0.030)
       ret, frame = cam1.read()
       if ret:
          images1.append(frame)
