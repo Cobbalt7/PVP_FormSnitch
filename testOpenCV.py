@@ -52,6 +52,7 @@ proj_mat =np.array([[1, 0, 0, 0],
                     [0, 1, 0, 0],
                     [0, 0, 1, 0]], dtype=np.float32)
 proj_mat2 = proj_mat.copy()
+points3d=[]
 
 cap, cap2 = setup_cams(platform.system())
 
@@ -80,6 +81,15 @@ while cap.isOpened():
     if cam2_present and not cam2_fail:
         results2 = infer_pose(image2, pose2)
     
+    if not cam1_fail and cam2_present and not cam2_fail:
+        points3d = []
+        if results.pose_landmarks and results2.pose_landmarks:
+            for lm1, lm2 in zip(results.pose_landmarks.landmark, results2.pose_landmarks.landmark):
+                point = calibration.get_point_image_coords(lm1, 640, 480)
+                point2 = calibration.get_point_image_coords(lm2, 640, 480)
+                points3d.append(calibration.get_xyz(proj_mat, proj_mat2, point, point2))
+                print(f"Points: {points3d[-1][0]}, {points3d[-1][1]}, {points3d[-1][2]}")
+            
     if cam1_view and not cam1_fail:
         draw_landmarks(image, results)
     elif not cam1_view and not cam2_fail:
