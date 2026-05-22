@@ -9,8 +9,26 @@ CHECKERBOARD = (5, 8)
 #matrix1, distortion1 = None, None
 #matrix2, distortion2 = None, None
 #R1, R2, P1, P2 = None, None, None, None
-calibrated = False
+#calibrated = False
 
+class CalibrationResult:
+   mat = (None, None)
+   dist = (None, None)
+   rot = (None, None)
+   proj = (np.array([[1, 0, 0, 0],
+                     [0, 1, 0, 0],
+                     [0, 0, 1, 0]], dtype=np.float32),
+           np.array([[1, 0, 0, 0],
+                     [0, 1, 0, 0],
+                     [0, 0, 1, 0]], dtype=np.float32))
+   calibrated = False
+   def __init__(self, matrix, distortion, rotation, projection):
+      self.mat = matrix
+      self.dist = distortion
+      self.rot = rotation
+      self.proj = projection
+      self.calibrated = True
+      
 def _evaluate_calibration(threedpoints, twodpoints1, twodpoints2, matrix1, distortion1, matrix2, distortion2, r_vecs1, t_vecs1, r_vecs2, t_vecs2):
    """
    Calculates and prints the mean reprojection error for both cameras.
@@ -113,6 +131,7 @@ def calibrate_cameras(cam1: VideoCapture, cam2: VideoCapture):
    images1 = []
    images2 = []
    for i in range(0,30):
+      time.sleep(0.1)
       ret, frame = cam1.read()
       if ret:
          images1.append(frame)
@@ -129,19 +148,31 @@ def calibrate_cameras(cam1: VideoCapture, cam2: VideoCapture):
    # detected corners (twodpoints)
    h, w = images1[0].shape[:2]
    image_size = (w, h)
-   ret1, matrix1, distortion1, r_vecs1, t_vecs1 = cv2.calibrateCamera(
-       threedpoints, twodpoints1, image_size, None, None)
-
-   ret2, matrix2, distortion2, r_vecs2, t_vecs2 = cv2.calibrateCamera(
-       threedpoints, twodpoints2, image_size, None, None)
+   try:
+      ret1, matrix1, distortion1, r_vecs1, t_vecs1 = cv2.calibrateCamera(
+         threedpoints, twodpoints1, image_size, None, None)
+   except:
+      print("Error: Cam1 calibration failed!")
+      # Returns empty object
+      return CalibrationResult
+   
+   try:
+      ret2, matrix2, distortion2, r_vecs2, t_vecs2 = cv2.calibrateCamera(
+         threedpoints, twodpoints2, image_size, None, None)
+   except:
+      print("Error: Cam2 calibration failed!")
+      # Returns empty object
+      return CalibrationResult
    
    stereocalibration_flags = cv2.CALIB_FIX_INTRINSIC
    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
-   
-   ret, matrix1, distortion1, matrix2, distortion2, R, T, E, F = cv2.stereoCalibrate(
-      threedpoints, twodpoints1, twodpoints2, matrix1, distortion1, 
-      matrix2, distortion2, image_size, criteria = criteria, flags = stereocalibration_flags)
-   
+   try:
+      ret, matrix1, distortion1, matrix2, distortion2, R, T, E, F = cv2.stereoCalibrate(
+         threedpoints, twodpoints1, twodpoints2, matrix1, distortion1, 
+         matrix2, distortion2, image_size, criteria = criteria, flags = stereocalibration_flags)
+   except:
+      print("Error: Stereo calibration failed!")
+      return CalibrationResult
    _evaluate_calibration(threedpoints, twodpoints1, twodpoints2, 
                         matrix1, distortion1, matrix2, distortion2, 
                         r_vecs1, t_vecs1, r_vecs2, t_vecs2)
@@ -151,8 +182,9 @@ def calibrate_cameras(cam1: VideoCapture, cam2: VideoCapture):
        matrix1, distortion1, matrix2, distortion2, 
        image_size, R, T, rectify_flags, alpha=0)
    
-   calibrated = True
-   return P1, P2
+   cal_res = CalibrationResult((matrix1, matrix2), (distortion1, distortion2), (R1, R2), (P1, P2))
+   #calibrated = True
+   return cal_res #P1, P2
 
 def _rectify_point(pixel_pt, camera_matrix, dist_coeffs, R_matrix, P_matrix):
    """
@@ -160,15 +192,16 @@ def _rectify_point(pixel_pt, camera_matrix, dist_coeffs, R_matrix, P_matrix):
    transforms it into the rectified camera coordinate space.
    """
    # Reshape point to format expected by OpenCV: (1, 1, 2)
-   pt = np.array([[pixel_pt]], dtype=np.float32)
-   
+   pt = np.array([[pixel_pt]], dtype=np.float32).reshape(-1, 1, 2)
+   criteria = (cv2.TERM_CRITERIA_EPS + 
+               cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
    # Undistort and apply rectification rotation
-   rectified_pt = cv2.undistortImagePoints(pt, camera_matrix, dist_coeffs, R_matrix, P_matrix)
+   rectified_pt = cv2.undistortImagePoints(pt, camera_matrix, dist_coeffs, criteria)
     
    # Return as a clean (x, y) tuple
    return rectified_pt[0][0]
 
-def get_xyz(P1, P2, pt1, pt2):
+def get_xyz(cal:CalibrationResult, pt1, pt2):
    """
    Triangulates a single pair of 2D points into a 3D coordinate.
    
@@ -176,9 +209,9 @@ def get_xyz(P1, P2, pt1, pt2):
    pt1: (x, y) pixel coordinate from Camera 1
    pt2: (x, y) pixel coordinate from Camera 2
    """
-   if calibrated:
-      rectified_pt1 = _rectify_point(pt1, matrix1, distortion1, R1, P1)
-      rectified_pt2 = _rectify_point(pt2, matrix2, distortion2, R2, P2)
+   if cal.calibrated:
+      rectified_pt1 = _rectify_point(pt1, cal.mat[0], cal.dist[0], cal.rot[0], cal.proj[0])
+      rectified_pt2 = _rectify_point(pt2, cal.mat[1], cal.dist[1], cal.rot[1], cal.proj[1])
    else:
       #bypass if uncalibrated
       rectified_pt1 = pt1
@@ -189,8 +222,11 @@ def get_xyz(P1, P2, pt1, pt2):
    points2 = np.array([rectified_pt2], dtype=np.float32).T  # Shape: (2, 1)
    
    # Triangulate points outputs a 4x1 homogeneous vector
-   points_4d = cv2.triangulatePoints(P1, P2, points1, points2)
-   
+   try:
+      points_4d = cv2.triangulatePoints(cal.proj[0], cal.proj[1], points1, points2)
+   except:
+      print("Error: Triangulation failed!")
+      return np.array([0, 0, 0], dtype=np.float32)
    # Convert from homogeneous (X, Y, Z, W) to Cartesian (x, y, z)
    # Divide X, Y, Z by W
    points_3d = points_4d[:3, :] / points_4d[3, :]
