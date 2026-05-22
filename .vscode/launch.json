@@ -8,7 +8,7 @@
             "name": "Python Debugger: OpenCV",
             "type": "debugpy",
             "request": "launch",
-            "program": "testOpenCV.py",
+            "program": "main.py",
             "console": "integratedTerminal"
         }
     ]
