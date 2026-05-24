@@ -1,3 +1,4 @@
+import os
 import sys
 import tkinter as tk
 import queue
@@ -185,9 +186,9 @@ class App(ctk.CTk):
     def shutdown_pi(self):
         """Safely stops threads and shuts down the Raspberry Pi operating system."""
         print("Shutting down system...")
-        self.on_closing()
         # Executes the Linux shutdown command
-        # os.system("sudo shutdown -h now")
+        # os.system("systemctl poweroff")
+        self.on_closing()
 
     def on_closing(self):
         """Cleans up background threads safely before closing the window."""
