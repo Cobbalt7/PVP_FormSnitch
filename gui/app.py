@@ -87,31 +87,30 @@ class App(ctk.CTk):
         # 2. Control Sidebar (Right Side)
         self.sidebar = ctk.CTkFrame(self, corner_radius=10)
         self.sidebar.grid(row=0, column=1, padx=(0, 20), pady=20, sticky="nsew")
-        self.sidebar.grid_rowconfigure((0, 1, 2, 3), weight=1)
+        self.sidebar.grid_rowconfigure(0, weight=1)
+        self.sidebar.grid_rowconfigure((1, 2, 3), weight=5)
 
         # Sidebar Title
         self.sidebar_label = ctk.CTkLabel(self.sidebar, text="CONTROLS", font=ctk.CTkFont(size=16, weight="bold"))
-        self.sidebar_label.grid(row=0, column=0, padx=20, pady=20, sticky="n")
+        self.sidebar_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
         self.switch_cam_btn = ctk.CTkButton(
             self.sidebar, 
             text="Switch Camera", 
             fg_color="#1f538d", 
             hover_color="#14375e",
-            height=80,
             command=self.switch_cam
         )
-        self.switch_cam_btn.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        self.switch_cam_btn.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
 
         self.calib_btn = ctk.CTkButton(
             self.sidebar, 
             text="Calibrate Cameras", 
             fg_color="#1f538d", 
             hover_color="#14375e",
-            height=80,
             command=self.calibrate_cam
         )
-        self.calib_btn.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
+        self.calib_btn.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
 
         # System Shutdown Button
         self.shutdown_btn = ctk.CTkButton(
@@ -119,10 +118,9 @@ class App(ctk.CTk):
             text="System Shutdown", 
             fg_color="#942a2a", 
             hover_color="#661c1c",
-            height=80,
             command=self.shutdown_pi
         )
-        self.shutdown_btn.grid(row=3, column=0, padx=20, pady=20, sticky="s")
+        self.shutdown_btn.grid(row=3, column=0, padx=20, pady=20, sticky="nsew")
 
     def update_video_feed(self):
         """Checks the queue for new frames and updates the UI."""

@@ -2,6 +2,7 @@ import threading
 import cv2
 import queue
 import time
+import platform
 
 # --- BACKGROUND CAMERA THREAD ---
 class VideoCaptureThread(threading.Thread):
@@ -14,7 +15,10 @@ class VideoCaptureThread(threading.Thread):
 
     def run(self):
         # Initialize camera with performance tweaks for Raspberry Pi
-        cap = cv2.VideoCapture(self.video_source, cv2.CAP_V4L2)
+        if platform.system() == 'Linux':
+            cap = cv2.VideoCapture(self.video_source, cv2.CAP_V4L2)
+        else:
+            cap = cv2.VideoCapture(self.video_source, cv2.CAP_DSHOW)
         
         # Optimize resolution for the Pi's CPU
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)

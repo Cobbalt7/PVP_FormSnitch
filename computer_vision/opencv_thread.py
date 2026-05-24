@@ -2,10 +2,7 @@ import threading
 import cv2
 import queue
 import mediapipe as mp
-from cv2.typing import MatLike
 import computer_vision.angles_and_evaluation as angev
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
 
 # --- THREAD 2: MACHINE LEARNING WORKER (The Heavy Lifter) ---
@@ -31,7 +28,6 @@ class OpenCVThread(threading.Thread):
                 # --------------------------------------------------------
                 ml_result = self._infer_pose(frame)
                 if ml_result is not None:
-                    frame = self._draw_landmarks(frame, ml_result)
                     data = {"frame": frame, "ml_result": ml_result}
                     # 2. Push processed frame to GUI queue
                     if self.processed_queue.full():
@@ -40,20 +36,8 @@ class OpenCVThread(threading.Thread):
                     self.processed_queue.put(data)
             except queue.Empty:
                 pass
-    
-    def _draw_landmarks(self, image: MatLike, pose_results, body_angles=None):
-        image.flags.writeable = True
 
-        if pose_results.pose_landmarks:
-            mp_drawing.draw_landmarks(
-                image,
-                pose_results.pose_landmarks,
-                mp_pose.POSE_CONNECTIONS,
-                landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
-            )
-        return cv2.flip(image, 1)
-
-    def _infer_pose(self, image: MatLike):
+    def _infer_pose(self, image):
         # To improve performance, optionally mark the image as not writeable to
         # pass by reference.
         image.flags.writeable = False

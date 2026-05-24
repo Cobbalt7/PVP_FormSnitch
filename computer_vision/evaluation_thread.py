@@ -4,6 +4,8 @@ import queue
 import computer_vision.angles_and_evaluation as angev
 import time
 import mediapipe as mp
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
 
 class EvalThread(threading.Thread):
@@ -43,8 +45,10 @@ class EvalThread(threading.Thread):
                     self._evaluate(body_angles)
                 if self.show_camera1.is_set():
                     frame = item1["frame"]
+                    frame = self._draw_landmarks(frame, result1)
                 else:
                     frame = item2["frame"]
+                    frame = self._draw_landmarks(frame, result2)
                 frame = self._draw_info(frame, body_angles)
 
                 # 2. Push processed frame to GUI queue
@@ -77,6 +81,17 @@ class EvalThread(threading.Thread):
             print("Minimalus klubo kampas:", feedback["min_hip_angle"])
             print("---------------")
             
+    def _draw_landmarks(self, image, pose_results):
+        image.flags.writeable = True
+
+        if pose_results.pose_landmarks:
+            mp_drawing.draw_landmarks(
+                image,
+                pose_results.pose_landmarks,
+                mp_pose.POSE_CONNECTIONS,
+                landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+            )
+        return cv2.flip(image, 1)
     
     def _draw_info(self, frame, body_angles=None):
         if body_angles is not None:
