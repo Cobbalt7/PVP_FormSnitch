@@ -37,6 +37,7 @@ class EvalThread(threading.Thread):
                     pass
                 
                 body_points_3d = angev.extract_points_from_triangulated_list(points3d)
+                body_angles = None
                 if angev.points_are_valid(body_points_3d):
                     body_angles = angev.calculate_body_angles(body_points_3d)
                     self._evaluate(body_angles)
