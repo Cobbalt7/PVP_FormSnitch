@@ -66,9 +66,9 @@ class App(ctk.CTk):
         self.eval_thread.start()
 
         # Configure Grid Layout (2 Columns: Left for Video, Right for Controls)
-        self.grid_columnconfigure(0, weight=7)  # Video column takes up more space
-        self.grid_columnconfigure(1, weight=1)  # Sidebar column
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=7)  # Video column takes up more space
+        self.grid_rowconfigure(1, weight=1)  # Sidebar column
+        self.grid_columnconfigure(0, weight=1)
 
         # Create UI Elements
         self._create_widgets()
@@ -87,9 +87,9 @@ class App(ctk.CTk):
 
         # 2. Control Sidebar (Right Side)
         self.sidebar = ctk.CTkFrame(self, corner_radius=10)
-        self.sidebar.grid(row=0, column=1, padx=(0, 20), pady=20, sticky="nsew")
-        self.sidebar.grid_rowconfigure(0, weight=1)
-        self.sidebar.grid_rowconfigure((1, 2, 3), weight=5)
+        self.sidebar.grid(row=1, column=0, padx=(0, 20), pady=20, sticky="nsew")
+        self.sidebar.grid_columnconfigure(0, weight=1)
+        self.sidebar.grid_columnconfigure((1, 2, 3), weight=5)
 
         # Sidebar Title
         self.sidebar_label = ctk.CTkLabel(self.sidebar, text="CONTROLS", font=ctk.CTkFont(size=16, weight="bold"))
@@ -102,7 +102,7 @@ class App(ctk.CTk):
             hover_color="#14375e",
             command=self.switch_cam
         )
-        self.switch_cam_btn.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+        self.switch_cam_btn.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
 
         self.calib_btn = ctk.CTkButton(
             self.sidebar, 
@@ -111,7 +111,7 @@ class App(ctk.CTk):
             hover_color="#14375e",
             command=self.calibrate_cam
         )
-        self.calib_btn.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+        self.calib_btn.grid(row=0, column=2, padx=20, pady=20, sticky="nsew")
 
         # System Shutdown Button
         self.shutdown_btn = ctk.CTkButton(
@@ -121,7 +121,7 @@ class App(ctk.CTk):
             hover_color="#661c1c",
             command=self.shutdown_pi
         )
-        self.shutdown_btn.grid(row=3, column=0, padx=20, pady=20, sticky="nsew")
+        self.shutdown_btn.grid(row=0, column=3, padx=20, pady=20, sticky="nsew")
 
     def update_video_feed(self):
         """Checks the queue for new frames and updates the UI."""
@@ -156,7 +156,7 @@ class App(ctk.CTk):
                 pass
 
             # Schedule this function to run again in 15ms (~60 updates a second)
-            self.after(15, self.update_video_feed)
+            self.after(30, self.update_video_feed)
     
     def exit_fullscreen(self, event=None):
         self.attributes("-fullscreen", False)
