@@ -116,8 +116,8 @@ class Calibrator:
         pt2: (x, y) pixel coordinate from Camera 2
         """
         with self._lock:
-            pt1 = self._get_point_image_coords(lm1, 640, 480)
-            pt2 = self._get_point_image_coords(lm2, 640, 480)
+            pt1 = self._get_point_image_coords(lm1, 480, 640)
+            pt2 = self._get_point_image_coords(lm2, 480, 640)
 
             if self.calibration.calibrated:
                 rectified_pt1 = self._rectify_point(
