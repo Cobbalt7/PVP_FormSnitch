@@ -67,7 +67,7 @@ class App(ctk.CTk):
 
         # Configure Grid Layout (2 Columns: Left for Video, Right for Controls)
         self.grid_rowconfigure(0, weight=4)  # Video column takes up more space
-        self.grid_rowconfigure(1, weight=1)  # Sidebar column
+        self.grid_rowconfigure(1, weight=1, minsize=150)  # Sidebar column
         self.grid_columnconfigure(0, weight=1)
 
         # Create UI Elements
