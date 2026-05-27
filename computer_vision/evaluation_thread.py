@@ -32,6 +32,23 @@ class EvalThread(threading.Thread):
                 points3d = []
                 result1 = item1["ml_result"]
                 result2 = item2["ml_result"]
+
+                if result1.pose_landmarks and result2.pose_landmarks:
+                    left_knee_id = mp_pose.PoseLandmark.LEFT_KNEE.value
+                    right_knee_id = mp_pose.PoseLandmark.RIGHT_KNEE.value
+
+                    cam1_left_knee_vis = result1.pose_landmarks.landmark[left_knee_id].visibility
+                    cam2_left_knee_vis = result2.pose_landmarks.landmark[left_knee_id].visibility
+
+                    cam1_right_knee_vis = result1.pose_landmarks.landmark[right_knee_id].visibility
+                    cam2_right_knee_vis = result2.pose_landmarks.landmark[right_knee_id].visibility
+
+                    print("Cam1 L knee visibility:", cam1_left_knee_vis)
+                    print("Cam2 L knee visibility:", cam2_left_knee_vis)
+                    print("Cam1 R knee visibility:", cam1_right_knee_vis)
+                    print("Cam2 R knee visibility:", cam2_right_knee_vis)
+                    print("----------------")
+
                 if result1.pose_landmarks and result2.pose_landmarks:
                     for lm1, lm2 in zip(result1.pose_landmarks.landmark, result2.pose_landmarks.landmark):
                         points3d.append(self.calibrator.get_xyz(lm1, lm2))
@@ -39,6 +56,13 @@ class EvalThread(threading.Thread):
                     pass
                 
                 body_points_3d = angev.extract_points_from_triangulated_list(points3d)
+                print("L hip:", body_points_3d["left_hip"])                          
+                print("L knee:", body_points_3d["left_knee"])
+                print("L ankle:", body_points_3d["left_ankle"])
+                print("R hip:", body_points_3d["right_hip"])                     #koord tikrinimui
+                print("R knee:", body_points_3d["right_knee"])
+                print("R ankle:", body_points_3d["right_ankle"])
+                print("----------------")
                 body_angles = None
                 if angev.points_are_valid(body_points_3d):
                     body_angles = angev.calculate_body_angles(body_points_3d)

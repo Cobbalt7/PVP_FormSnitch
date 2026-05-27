@@ -139,11 +139,17 @@ class Calibrator:
                 points_4d = cv2.triangulatePoints(self.calibration.proj[0], self.calibration.proj[1], points1, points2)
             except Exception:
                 print("Error: Triangulation failed!")
-                return np.array([0, 0, 0], dtype=np.float32)
+                return None
 
             # Convert from homogeneous (X, Y, Z, W) to Cartesian (x, y, z)
             points_3d = points_4d[:3, :] / points_4d[3, :]
             coord_3d = points_3d.T[0]
+
+            if not np.all(np.isfinite(coord_3d)):
+                return None
+
+            if np.linalg.norm(coord_3d) > 10000:
+                return None
 
             return coord_3d
 
@@ -200,9 +206,16 @@ class Calibrator:
         print(f"Camera 2 Mean Reprojection Error: {mean_error_cam2 / max(1, total_points):.4f} pixels")
 
     def _rectify_point(self, pixel_pt, camera_matrix, dist_coeffs, R_matrix, P_matrix):
-        pt = np.array([[pixel_pt]], dtype=np.float32).reshape(-1, 1, 2)
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-        rectified_pt = cv2.undistortImagePoints(pt, camera_matrix, dist_coeffs, criteria)
+        pt = np.array([[pixel_pt]], dtype=np.float32)
+
+        rectified_pt = cv2.undistortPoints(
+            pt,
+            camera_matrix,
+            dist_coeffs,
+            R=R_matrix,
+            P=P_matrix
+        )
+
         return rectified_pt[0][0]
 
     @staticmethod
