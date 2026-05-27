@@ -66,7 +66,7 @@ class App(ctk.CTk):
         self.eval_thread.start()
 
         # Configure Grid Layout (2 Columns: Left for Video, Right for Controls)
-        self.grid_columnconfigure(0, weight=3)  # Video column takes up more space
+        self.grid_columnconfigure(0, weight=7)  # Video column takes up more space
         self.grid_columnconfigure(1, weight=1)  # Sidebar column
         self.grid_rowconfigure(0, weight=1)
 
@@ -141,8 +141,8 @@ class App(ctk.CTk):
                 
                 # Dynamically match widget size while preserving aspect ratio roughly
                 img_width, img_height = self.video_label.winfo_width(), self.video_label.winfo_height()
-                if img_width < 10: img_width = 640  # Fallback defaults for first frame
-                if img_height < 10: img_height = 480
+                if img_width < 10: img_width = 480  # Fallback defaults for first frame
+                if img_height < 10: img_height = 640
                 
                 ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(img_width, img_height))
                 
