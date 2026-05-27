@@ -129,10 +129,6 @@ class App(ctk.CTk):
         if self.running_event.is_set():
             try:
                 # Grab the latest frame from the thread queue
-                #if self.show_camera1:
-                #    frame = self.processed_queue1.get_nowait()
-                #else:
-                #    frame = self.processed_queue2.get_nowait()
                 frame = self.output_image_queue.get_nowait()
                 
                 # Dynamically match widget size while preserving aspect ratio roughly
@@ -156,7 +152,6 @@ class App(ctk.CTk):
             except queue.Empty:
                 pass
 
-            # Schedule this function to run again in 15ms (~60 updates a second)
             self.after(30, self.update_video_feed)
     
     def exit_fullscreen(self, event=None):
