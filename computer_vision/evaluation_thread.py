@@ -3,6 +3,9 @@ import cv2
 import queue
 import computer_vision.angles_and_evaluation as angev
 import time
+import csv
+import os
+import numpy as np
 import mediapipe as mp
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -19,10 +22,10 @@ class EvalThread(threading.Thread):
         self.show_camera1 = show_camera1_flag
         self.daemon=True
         self.squat_tracker = angev.SquatTracker()
+        self._csv_write_init()
 
     def run(self):
-        while True:
-            self.running_event.wait()
+        while self.running_event.is_set():
             if not self.data_q1.queue or not self.data_q2.queue:
                 time.sleep(0.001)
                 continue
@@ -56,6 +59,8 @@ class EvalThread(threading.Thread):
                     pass
                 
                 body_points_3d = angev.extract_points_from_triangulated_list(points3d)
+                if self.calibrator.is_calibrated():
+                    self._save_frame_coordinates(body_points_3d)
                 print("L hip:", body_points_3d["left_hip"])                          
                 print("L knee:", body_points_3d["left_knee"])
                 print("L ankle:", body_points_3d["left_ankle"])
@@ -83,6 +88,7 @@ class EvalThread(threading.Thread):
 
             except queue.Empty:
                 pass
+        self.csv_file.close()
     
     def _evaluate(self, body_angles):
         feedback = self.squat_tracker.update(body_angles)
@@ -144,3 +150,27 @@ class EvalThread(threading.Thread):
                             (30, 145), cv2.FONT_HERSHEY_SIMPLEX,
                             0.8, (0, 255, 0), 2)
         return frame
+
+    def _csv_write_init(self):
+        filename = "body_points_data.csv"
+        self.joint_names = ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip', 'left_knee', 'right_knee', 'left_ankle', 'right_ankle']
+
+        file_exists = os.path.exists(filename)
+        
+        self.csv_file = open(filename, mode="a", newline="", buffering=1024*1024)
+        self.writer = csv.writer(self.csv_file)
+
+        if not file_exists:
+            headers = []
+            for joint in self.joint_names:
+                headers.extend([f"{joint}_X", f"{joint}_Y", f"{joint}_Z"])
+            self.writer.writerow(headers)
+
+    def _save_frame_coordinates(self, data):
+        flat_frame_coordinates = [] 
+        for joint in self.joint_names:
+            if data.get(joint) is not None:
+                flat_frame_coordinates.extend(data[joint])
+            else:
+                flat_frame_coordinates.extend(["","",""])
+        self.writer.writerow(flat_frame_coordinates)

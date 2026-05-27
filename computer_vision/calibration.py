@@ -152,6 +152,9 @@ class Calibrator:
                 return None
 
             return coord_3d
+    
+    def is_calibrated(self):
+        return self.calibration.calibrated
 
     # --- PRIVATE INTERNAL METHODS ---
 
