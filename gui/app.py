@@ -19,7 +19,7 @@ class App(ctk.CTk):
 
         # Configure Main Window
         self.title("FormSnitch")
-        self.geometry("1280x800")
+        self.geometry("720x1280")
         self.attributes("-fullscreen", True)
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -89,6 +89,7 @@ class App(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, corner_radius=10)
         self.sidebar.grid(row=1, column=0, padx=(0, 20), pady=20, sticky="nsew")
         self.sidebar.grid_columnconfigure(0, weight=1)
+        self.sidebar.grid_rowconfigure(0, weight=1)
         self.sidebar.grid_columnconfigure((1, 2, 3), weight=5)
 
         # Sidebar Title
