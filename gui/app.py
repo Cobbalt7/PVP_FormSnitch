@@ -66,7 +66,7 @@ class App(ctk.CTk):
         self.eval_thread.start()
 
         # Configure Grid Layout (2 Columns: Left for Video, Right for Controls)
-        self.grid_rowconfigure(0, weight=7)  # Video column takes up more space
+        self.grid_rowconfigure(0, weight=5)  # Video column takes up more space
         self.grid_rowconfigure(1, weight=1)  # Sidebar column
         self.grid_columnconfigure(0, weight=1)
 
@@ -162,7 +162,7 @@ class App(ctk.CTk):
     def exit_fullscreen(self, event=None):
         self.attributes("-fullscreen", False)
         # You can also set a default window size to fall back to
-        self.geometry("1280x800")
+        self.geometry("720x1280")
 
     def switch_cam(self):
         if self.show_camera1.is_set():
