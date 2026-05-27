@@ -146,6 +146,9 @@ class Calibrator:
             coord_3d = points_3d.T[0]
 
             return coord_3d
+    
+    def is_calibrated(self):
+        return self.calibration.calibrated
 
     # --- PRIVATE INTERNAL METHODS ---
 
