@@ -133,17 +133,19 @@ class App(ctk.CTk):
                 #else:
                 #    frame = self.processed_queue2.get_nowait()
                 frame = self.output_image_queue.get_nowait()
-                # Convert OpenCV BGR format to RGB format
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                
-                # Convert to PIL Image and then to CustomTkinter CTkImage
-                pil_img = Image.fromarray(frame_rgb)
                 
                 # Dynamically match widget size while preserving aspect ratio roughly
                 img_width, img_height = self.video_label.winfo_width(), self.video_label.winfo_height()
                 if img_width < 10: img_width = 480  # Fallback defaults for first frame
                 if img_height < 10: img_height = 640
                 
+                frame_resized = cv2.resize(frame, (img_width, img_height), interpolation=cv2.INTER_LINEAR)
+                
+                # Convert OpenCV BGR format to RGB format
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                
+                # Convert to PIL Image and then to CustomTkinter CTkImage
+                pil_img = Image.fromarray(frame_rgb)
                 ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(img_width, img_height))
                 
                 # Update label image

@@ -28,7 +28,7 @@ class VideoCaptureThread(threading.Thread):
         while self.running_event.is_set():
             ret, frame = cap.read()
             if ret:
-                cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
                 # Capture high-precision timestamp immediately after read returns
                 timestamp = time.perf_counter()
                 
