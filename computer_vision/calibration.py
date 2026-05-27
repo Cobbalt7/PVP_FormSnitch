@@ -39,9 +39,10 @@ class Calibrator:
         Captures frames from both cameras, runs stereo calibration,
         and saves coefficients internally. Returns True if successful.
         """
+        square_size = 33.0
         # 3D points real world coordinates setup
         objectp3d = np.zeros((1, CHECKERBOARD[0] * CHECKERBOARD[1], 3), np.float32)
-        objectp3d[0, :, :2] = np.mgrid[0 : CHECKERBOARD[0], 0 : CHECKERBOARD[1]].T.reshape(-1, 2)
+        objectp3d[0, :, :2] = np.mgrid[0 : CHECKERBOARD[0], 0 : CHECKERBOARD[1]].T.reshape(-1, 2)*square_size
 
         images1 = []
         images2 = []
@@ -116,10 +117,11 @@ class Calibrator:
         pt2: (x, y) pixel coordinate from Camera 2
         """
         with self._lock:
+            print(f"MediaPipe X/Y: ({lm1.x:.3f}, {lm1.y:.3f})")
             pt1 = self._get_point_image_coords(lm1, 480, 640)
             pt2 = self._get_point_image_coords(lm2, 480, 640)
-
-            if self.calibration.calibrated:
+            print(f"Pixel X/Y: {pt1}")
+            if self.is_calibrated():
                 rectified_pt1 = self._rectify_point(
                     pt1, self.calibration.mat[0], self.calibration.dist[0], self.calibration.rot[0], self.calibration.proj[0]
                 )
@@ -130,7 +132,7 @@ class Calibrator:
                 # Bypass rectification if uncalibrated
                 rectified_pt1 = pt1
                 rectified_pt2 = pt2
-
+            print(f"Rectified Pixel X/Y: {rectified_pt1}")
             # OpenCV expects float32 arrays of shape (2, N) for 2D points
             points1 = np.array([rectified_pt1], dtype=np.float32).T  # Shape: (2, 1)
             points2 = np.array([rectified_pt2], dtype=np.float32).T  # Shape: (2, 1)
@@ -223,6 +225,6 @@ class Calibrator:
 
     @staticmethod
     def _get_point_image_coords(pt, im_w, im_h):
-        pixel_x = int(pt.x * im_w)
-        pixel_y = int(pt.y * im_h)
+        pixel_x = float(pt.x * im_w)
+        pixel_y = float(pt.y * im_h)
         return (pixel_x, pixel_y)
