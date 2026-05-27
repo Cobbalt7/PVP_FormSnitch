@@ -19,7 +19,7 @@ class App(ctk.CTk):
 
         # Configure Main Window
         self.title("FormSnitch")
-        self.geometry("1280x800")
+        self.geometry("720x1280")
         self.attributes("-fullscreen", True)
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -66,9 +66,9 @@ class App(ctk.CTk):
         self.eval_thread.start()
 
         # Configure Grid Layout (2 Columns: Left for Video, Right for Controls)
-        self.grid_columnconfigure(0, weight=3)  # Video column takes up more space
-        self.grid_columnconfigure(1, weight=1)  # Sidebar column
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=4)  # Video column takes up more space
+        self.grid_rowconfigure(1, weight=1, minsize=150)  # Sidebar column
+        self.grid_columnconfigure(0, weight=1)
 
         # Create UI Elements
         self._create_widgets()
@@ -87,9 +87,10 @@ class App(ctk.CTk):
 
         # 2. Control Sidebar (Right Side)
         self.sidebar = ctk.CTkFrame(self, corner_radius=10)
-        self.sidebar.grid(row=0, column=1, padx=(0, 20), pady=20, sticky="nsew")
+        self.sidebar.grid(row=1, column=0, padx=(0, 20), pady=20, sticky="nsew")
+        self.sidebar.grid_columnconfigure(0, weight=1)
         self.sidebar.grid_rowconfigure(0, weight=1)
-        self.sidebar.grid_rowconfigure((1, 2, 3), weight=5)
+        self.sidebar.grid_columnconfigure((1, 2, 3), weight=5)
 
         # Sidebar Title
         self.sidebar_label = ctk.CTkLabel(self.sidebar, text="CONTROLS", font=ctk.CTkFont(size=16, weight="bold"))
@@ -102,7 +103,7 @@ class App(ctk.CTk):
             hover_color="#14375e",
             command=self.switch_cam
         )
-        self.switch_cam_btn.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+        self.switch_cam_btn.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
 
         self.calib_btn = ctk.CTkButton(
             self.sidebar, 
@@ -111,7 +112,7 @@ class App(ctk.CTk):
             hover_color="#14375e",
             command=self.calibrate_cam
         )
-        self.calib_btn.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+        self.calib_btn.grid(row=0, column=2, padx=20, pady=20, sticky="nsew")
 
         # System Shutdown Button
         self.shutdown_btn = ctk.CTkButton(
@@ -121,29 +122,27 @@ class App(ctk.CTk):
             hover_color="#661c1c",
             command=self.shutdown_pi
         )
-        self.shutdown_btn.grid(row=3, column=0, padx=20, pady=20, sticky="nsew")
+        self.shutdown_btn.grid(row=0, column=3, padx=20, pady=20, sticky="nsew")
 
     def update_video_feed(self):
         """Checks the queue for new frames and updates the UI."""
         if self.running_event.is_set():
             try:
                 # Grab the latest frame from the thread queue
-                #if self.show_camera1:
-                #    frame = self.processed_queue1.get_nowait()
-                #else:
-                #    frame = self.processed_queue2.get_nowait()
                 frame = self.output_image_queue.get_nowait()
+                
+                # Dynamically match widget size while preserving aspect ratio roughly
+                img_width, img_height = self.video_label.winfo_width(), self.video_label.winfo_height()
+                if img_width < 10: img_width = 480  # Fallback defaults for first frame
+                if img_height < 10: img_height = 640
+                
+                frame_resized = cv2.resize(frame, (img_width, img_height), interpolation=cv2.INTER_LINEAR)
+                
                 # Convert OpenCV BGR format to RGB format
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 
                 # Convert to PIL Image and then to CustomTkinter CTkImage
                 pil_img = Image.fromarray(frame_rgb)
-                
-                # Dynamically match widget size while preserving aspect ratio roughly
-                img_width, img_height = self.video_label.winfo_width(), self.video_label.winfo_height()
-                if img_width < 10: img_width = 640  # Fallback defaults for first frame
-                if img_height < 10: img_height = 480
-                
                 ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(img_width, img_height))
                 
                 # Update label image
@@ -153,13 +152,12 @@ class App(ctk.CTk):
             except queue.Empty:
                 pass
 
-            # Schedule this function to run again in 15ms (~60 updates a second)
-            self.after(15, self.update_video_feed)
+            self.after(30, self.update_video_feed)
     
     def exit_fullscreen(self, event=None):
         self.attributes("-fullscreen", False)
         # You can also set a default window size to fall back to
-        self.geometry("1280x800")
+        self.geometry("720x1280")
 
     def switch_cam(self):
         if self.show_camera1.is_set():
