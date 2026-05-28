@@ -52,9 +52,14 @@ class EvalThread(threading.Thread):
                     print("Cam2 R knee visibility:", cam2_right_knee_vis)
                     print("----------------")
 
-                if result1.pose_landmarks and result2.pose_landmarks:
-                    for lm1, lm2 in zip(result1.pose_landmarks.landmark, result2.pose_landmarks.landmark):
-                        points3d.append(self.calibrator.get_xyz(lm1, lm2))
+                if result1.pose_landmarks and result2.pose_landmarks:                                           #
+                    h, w = item1["frame"].shape[:2]                                                             # real width ir height
+                    for lm1, lm2 in zip(result1.pose_landmarks.landmark, result2.pose_landmarks.landmark):      # low visibility filtras
+                        if lm1.visibility < 0.5 or lm2.visibility < 0.5:                                        # 
+                            points3d.append(None)                                                               #
+                            continue                                                                            #
+                                                                                                                #
+                        points3d.append(self.calibrator.get_xyz(lm1, lm2, w, h))                                #
                 else:
                     pass
                 
