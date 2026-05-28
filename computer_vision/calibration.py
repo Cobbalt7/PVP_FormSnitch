@@ -110,7 +110,7 @@ class Calibrator:
             print("Calibration completed and stored successfully!")
             return True
 
-    def get_xyz(self, lm1, lm2) -> np.ndarray:
+    def get_xyz(self, lm1, lm2, image_width=480, image_height=640) -> np.ndarray:                                 # cia irasom w ir h
         """
         Triangulates a single pair of 2D points into a 3D coordinate using stored coefficients.
         pt1: (x, y) pixel coordinate from Camera 1
@@ -118,8 +118,9 @@ class Calibrator:
         """
         with self._lock:
             print(f"MediaPipe X/Y: ({lm1.x:.3f}, {lm1.y:.3f})")
-            pt1 = self._get_point_image_coords(lm1, 480, 640)
-            pt2 = self._get_point_image_coords(lm2, 480, 640)
+            # Vietoje fiksuotų 480x640 reikšmių naudojamas realus kadro dydis.
+            pt1 = self._get_point_image_coords(lm1, image_width, image_height)                                    # tada cia naudojam
+            pt2 = self._get_point_image_coords(lm2, image_width, image_height)                                    # h, w = item1["frame"].shape[:2]  ir  points3d.append(self.calibrator.get_xyz(lm1, lm2, w, h))  duoda realius pixels is evaluation_thread
             print(f"Pixel X/Y: {pt1}")
             if self.is_calibrated():
                 rectified_pt1 = self._rectify_point(
@@ -133,6 +134,14 @@ class Calibrator:
                 rectified_pt1 = pt1
                 rectified_pt2 = pt2
             print(f"Rectified Pixel X/Y: {rectified_pt1}")
+
+            # Po rektifikacijos tas pats taškas abiejose kamerose turėtų būti panašiame Y lygyje.
+            # Jei Y skirtumas per didelis, taškas laikomas nepatikimu ir netrianguliuojamas.
+            y_diff = abs(rectified_pt1[1] - rectified_pt2[1])
+
+            if y_diff > 30:                 #filtras
+               return None
+
             # OpenCV expects float32 arrays of shape (2, N) for 2D points
             points1 = np.array([rectified_pt1], dtype=np.float32).T  # Shape: (2, 1)
             points2 = np.array([rectified_pt2], dtype=np.float32).T  # Shape: (2, 1)
