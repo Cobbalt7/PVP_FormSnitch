@@ -6,7 +6,7 @@ if __name__ == "__main__":
         app = App(video_source1=0, video_source2=2)
         app.mainloop()
     elif platform.system() == 'Windows':
-        app = App(video_source1=0, video_source2=2)
+        app = App(video_source1=0, video_source2=1)
         app.mainloop()
     else:
         print("Unsupported platform. Shutting down...")
