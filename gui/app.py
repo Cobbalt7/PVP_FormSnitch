@@ -22,7 +22,7 @@ class App(ctk.CTk):
         self.geometry("720x1280")
         self.update_idletasks()
         self.attributes("-fullscreen", True)
-        ctk.set_appearance_mode("light")
+        ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
         # Threading Control Variables
