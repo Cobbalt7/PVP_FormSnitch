@@ -168,7 +168,7 @@ class EvalThread(threading.Thread):
         if not file_exists:
             headers = []
             for joint in self.joint_names:
-                headers.extend([f"{joint}_X", f"{joint}_Y", f"{joint}_Z"])
+                headers.extend([f"{joint}_X", f"{joint}_Z", f"{joint}_Y"])
             self.writer.writerow(headers)
 
     def _save_frame_coordinates(self, data):
