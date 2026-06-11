@@ -31,7 +31,7 @@ class VideoCaptureThread(threading.Thread):
                 # Capture high-precision timestamp immediately after read returns
                 timestamp = time.perf_counter()
                 
-                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
                 
                 # Bundle them together
                 data = {"timestamp": timestamp, "data": frame}

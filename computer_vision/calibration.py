@@ -5,6 +5,7 @@ import numpy as np
 import threading
 import queue
 
+CALIBRATION_FILE = "stereo_calibration.npz"
 # Define the dimensions of checkerboard
 CHECKERBOARD = (5, 8)
 
@@ -34,21 +35,28 @@ class Calibrator:
         self.calibration = CalibrationResult()
         self._lock = threading.RLock()
         
-    def calibrate(self, frame_q1, frame_q2) -> bool:
+    def calibrate(self, frame_q1, frame_q2, progress_callback=None) -> bool:
         """
         Captures frames from both cameras, runs stereo calibration,
         and saves coefficients internally. Returns True if successful.
         """
+        square_size = 33.0
         # 3D points real world coordinates setup
         objectp3d = np.zeros((1, CHECKERBOARD[0] * CHECKERBOARD[1], 3), np.float32)
-        objectp3d[0, :, :2] = np.mgrid[0 : CHECKERBOARD[0], 0 : CHECKERBOARD[1]].T.reshape(-1, 2)
+        objectp3d[0, :, :2] = np.mgrid[0 : CHECKERBOARD[0], 0 : CHECKERBOARD[1]].T.reshape(-1, 2)*square_size
 
         images1 = []
         images2 = []
-        while len(images1) < 30:
+        total_images = 30
+
+        while len(images1) < total_images:
             try:
                 images1.append(frame_q1.get(timeout=1.0))
                 images2.append(frame_q2.get(timeout=1.0))
+
+                if progress_callback is not None:
+                    progress_callback(len(images1), total_images)
+
             except queue.Empty:
                 time.sleep(0.001)
                 
@@ -106,20 +114,132 @@ class Calibrator:
 
             # Save results to instance property
             self.calibration = CalibrationResult((matrix1, matrix2), (distortion1, distortion2), (R1, R2), (P1, P2))
+            self.save_calibration()
+            self.verify_saved_calibration()
             print("Calibration completed and stored successfully!")
             return True
 
-    def get_xyz(self, lm1, lm2) -> np.ndarray:
+    def save_calibration(self, filename=CALIBRATION_FILE):
+        """
+        Išsaugo stereo kalibracijos rezultatus į failą.
+        Tai leidžia kitą kartą naudoti tą pačią kamerų padėtį be naujos kalibracijos.
+        """
+        if not self.is_calibrated():
+            print("Calibration was not saved because calibrator is not calibrated.")
+            return False
+
+        np.savez(
+            filename,
+            matrix1=self.calibration.mat[0],
+            matrix2=self.calibration.mat[1],
+            distortion1=self.calibration.dist[0],
+            distortion2=self.calibration.dist[1],
+            rotation1=self.calibration.rot[0],
+            rotation2=self.calibration.rot[1],
+            projection1=self.calibration.proj[0],
+            projection2=self.calibration.proj[1],
+        )
+
+        print(f"Calibration saved to {filename}")
+        return True
+
+    def load_calibration(self, filename=CALIBRATION_FILE):
+        """
+        Nuskaito stereo kalibracijos rezultatus iš failo.
+        Naudojama tada, kai kameros po kalibracijos nebuvo pajudintos.
+        """
+        try:
+            data = np.load(filename)
+
+            matrix1 = data["matrix1"]
+            matrix2 = data["matrix2"]
+            distortion1 = data["distortion1"]
+            distortion2 = data["distortion2"]
+            rotation1 = data["rotation1"]
+            rotation2 = data["rotation2"]
+            projection1 = data["projection1"]
+            projection2 = data["projection2"]
+
+            self.calibration = CalibrationResult(
+                (matrix1, matrix2),
+                (distortion1, distortion2),
+                (rotation1, rotation2),
+                (projection1, projection2)
+            )
+
+            print(f"Calibration loaded from {filename}")
+            return True
+
+        except FileNotFoundError:
+            print(f"Calibration file {filename} not found.")
+            return False
+
+        except Exception as e:
+            print("Failed to load calibration:", e)
+            return False
+    
+    def verify_saved_calibration(self, filename=CALIBRATION_FILE):
+        """
+        Patikrina, ar išsaugotos ir vėl nuskaitytos kalibracijos matricos sutampa
+        su šiuo metu atmintyje esančiomis matricomis.
+        """
+        if not self.is_calibrated():
+            print("Cannot verify: calibrator is not calibrated.")
+            return False
+
+        try:
+            data = np.load(filename)
+
+            checks = {
+                "matrix1": (self.calibration.mat[0], data["matrix1"]),
+                "matrix2": (self.calibration.mat[1], data["matrix2"]),
+                "distortion1": (self.calibration.dist[0], data["distortion1"]),
+                "distortion2": (self.calibration.dist[1], data["distortion2"]),
+                "rotation1": (self.calibration.rot[0], data["rotation1"]),
+                "rotation2": (self.calibration.rot[1], data["rotation2"]),
+                "projection1": (self.calibration.proj[0], data["projection1"]),
+                "projection2": (self.calibration.proj[1], data["projection2"]),
+            }
+
+            all_ok = True
+
+            print("--- Saved calibration verification ---")
+
+            for name, (original, loaded) in checks.items():
+                exact_equal = np.array_equal(original, loaded)
+                close_equal = np.allclose(original, loaded)
+
+                max_diff = np.max(np.abs(original - loaded))
+
+                print(f"{name}: exact={exact_equal}, allclose={close_equal}, max_diff={max_diff}")
+
+                if not close_equal:
+                    all_ok = False
+
+            if all_ok:
+                print("Calibration save/load verification PASSED.")
+            else:
+                print("Calibration save/load verification FAILED.")
+
+            return all_ok
+
+        except Exception as e:
+            print("Failed to verify saved calibration:", e)
+            return False
+
+    def get_xyz(self, lm1, lm2, image_width=480, image_height=640) -> np.ndarray:                                 # cia irasom w ir h
         """
         Triangulates a single pair of 2D points into a 3D coordinate using stored coefficients.
         pt1: (x, y) pixel coordinate from Camera 1
         pt2: (x, y) pixel coordinate from Camera 2
         """
         with self._lock:
-            pt1 = self._get_point_image_coords(lm1, 480, 640)
-            pt2 = self._get_point_image_coords(lm2, 480, 640)
-
-            if self.calibration.calibrated:
+            #print(f"MediaPipe X/Y: ({lm1.x:.3f}, {lm1.y:.3f})")
+            # Vietoje fiksuotų 480x640 reikšmių naudojamas realus kadro dydis.
+            pt1 = self._get_point_image_coords(lm1, image_width, image_height)                                    # tada cia naudojam
+            pt2 = self._get_point_image_coords(lm2, image_width, image_height)                                    # h, w = item1["frame"].shape[:2]  ir  points3d.append(self.calibrator.get_xyz(lm1, lm2, w, h))  duoda realius pixels is evaluation_thread
+            #print(f"Pixel X/Y: {pt1}")
+            if self.is_calibrated():
                 rectified_pt1 = self._rectify_point(
                     pt1, self.calibration.mat[0], self.calibration.dist[0], self.calibration.rot[0], self.calibration.proj[0]
                 )
@@ -130,6 +250,14 @@ class Calibrator:
                 # Bypass rectification if uncalibrated
                 rectified_pt1 = pt1
                 rectified_pt2 = pt2
+            #print(f"Rectified Pixel X/Y: {rectified_pt1}")
+
+            # Po rektifikacijos tas pats taškas abiejose kamerose turėtų būti panašiame Y lygyje.
+            # Jei Y skirtumas per didelis, taškas laikomas nepatikimu ir netrianguliuojamas.
+            #y_diff = abs(rectified_pt1[1] - rectified_pt2[1])
+
+            #if y_diff > 30:                 #filtras
+            #   return None
 
             # OpenCV expects float32 arrays of shape (2, N) for 2D points
             points1 = np.array([rectified_pt1], dtype=np.float32).T  # Shape: (2, 1)
@@ -223,6 +351,6 @@ class Calibrator:
 
     @staticmethod
     def _get_point_image_coords(pt, im_w, im_h):
-        pixel_x = int(pt.x * im_w)
-        pixel_y = int(pt.y * im_h)
+        pixel_x = float(pt.x * im_w)
+        pixel_y = float(pt.y * im_h)
         return (pixel_x, pixel_y)

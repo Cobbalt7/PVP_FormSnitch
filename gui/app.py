@@ -5,6 +5,7 @@ import queue
 import threading
 import cv2
 import customtkinter as ctk
+import time
 from PIL import Image, ImageTk
 from computer_vision.camera_thread import VideoCaptureThread
 from computer_vision.opencv_thread import OpenCVThread
@@ -20,6 +21,8 @@ class App(ctk.CTk):
         # Configure Main Window
         self.title("FormSnitch")
         self.geometry("720x1280")
+        self.update_idletasks()
+        self.config(cursor="none")
         self.attributes("-fullscreen", True)
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -42,6 +45,7 @@ class App(ctk.CTk):
 
         # Create Calibrator Object
         self.calibrator = Calibrator()
+        self.calibrator.load_calibration()  # Load latest calibration results
         
         # Create the video capture background threads
         self.video_thread1 = VideoCaptureThread(video_source1, self.raw_queue1, self.running_event)
@@ -174,9 +178,24 @@ class App(ctk.CTk):
         print("Calibrate Action Triggered!")
         
     def _run_calibration_async(self):
-        self.calibrator.calibrate(self.sync_queue1, self.sync_queue2)
+        self.after(0, lambda: self.calib_btn.configure(text="Prepare checkerboard..."))
+        time.sleep(5)
+    
+        self.calibrator.calibrate(
+            self.sync_queue1,
+            self.sync_queue2,
+            progress_callback=self._update_calibration_progress
+        )
+
         self.after(0, self._on_calibration_complete)
 
+    def _update_calibration_progress(self, current, total):
+        self.after(
+            0,
+            lambda: self.calib_btn.configure(
+                text=f"Calibrating... {current}/{total}"
+            )
+        )
     def _on_calibration_complete(self):
         self.ml_running_event.set()
         self.calib_btn.configure(state="normal", text="Calibrate Cameras")
