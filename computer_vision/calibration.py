@@ -168,6 +168,7 @@ class Calibrator:
             )
 
             print(f"Calibration loaded from {filename}")
+            self.calibration.calibrated = True
             return True
 
         except FileNotFoundError:

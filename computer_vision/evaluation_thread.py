@@ -11,16 +11,32 @@ mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
 
+# For more stable 3d display
+ANCHOR_INDICES = [11, 12, 23, 24, 25, 26]
+
 class EvalThread(threading.Thread):
-    def __init__(self, data_q1, data_q2, out_q, calibrator, running_event, show_camera1_flag):
+    def __init__(self, data_q1, data_q2, out_q, calibrator, running_event, resolution:tuple):
         super().__init__()
         self.data_q1 = data_q1
         self.data_q2 = data_q2
         self.out_q = out_q
         self.calibrator = calibrator
         self.running_event = running_event
-        self.show_camera1 = show_camera1_flag
+        self.viewport = 0
+        self._lock = threading.Lock()
         self.daemon=True
+        self.width=resolution[0]
+        self.height=resolution[1]
+        self.K = np.array([
+            [self.width, 0, self.width/2],
+            [0, self.width, self.height/2],
+            [0, 0, 1]
+        ], dtype=np.float64)
+        self.dist_coeffs = np.zeros((4, 1)) 
+        self.pitch = 0.0
+        self.yaw = 0.0
+        self.roll = 0.0
+        self.distance =3000.0  
         self.squat_tracker = angev.SquatTracker()
         self._csv_write_init()
 
@@ -77,12 +93,7 @@ class EvalThread(threading.Thread):
                 if angev.points_are_valid(body_points_3d):
                     body_angles = angev.calculate_body_angles(body_points_3d)
                     self._evaluate(body_angles)
-                if self.show_camera1.is_set():
-                    frame = item1["frame"]
-                    frame = self._draw_landmarks(frame, result1)
-                else:
-                    frame = item2["frame"]
-                    frame = self._draw_landmarks(frame, result2)
+                frame = self._draw_frame(item1["frame"], item2["frame"], result1, result2, points3d)
                 frame = self._draw_info(frame, body_angles)
 
                 # 2. Push processed frame to GUI queue
@@ -179,3 +190,105 @@ class EvalThread(threading.Thread):
             else:
                 flat_frame_coordinates.extend(["","",""])
         self.writer.writerow(flat_frame_coordinates)
+        
+    def get_viewport(self):
+        return self.viewport
+    
+    def set_viewport(self, view_num):
+        if view_num < 3:
+            with self._lock:
+                self.viewport = view_num
+           
+    def _draw_frame(self, cam_frame1, cam_frame2, ml_result1, ml_result2, points_3d):
+        with self._lock:
+            match(self.viewport):
+                case 0:
+                    frame = self._draw_landmarks(cam_frame1, ml_result1)
+                case 1:
+                    frame = self._draw_landmarks(cam_frame2, ml_result2)
+                case 2:
+                    frame = self._draw_3d_pose(points_3d)
+                case _:
+                    frame = self._draw_landmarks(cam_frame1, ml_result1)
+        return frame
+    
+    def _draw_3d_pose(self, coords):
+        num_points = len(coords)
+        virtual_frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+            
+        # 1. Create a clean array and a validity mask
+        pts_3d_clean = np.zeros((num_points, 3), dtype=np.float64)
+        valid_mask = np.zeros(num_points, dtype=bool)
+        
+        for i, pt in enumerate(coords):
+            if pt is not None:
+                pts_3d_clean[i] = pt
+                valid_mask[i] = True
+                
+        # If no points are visible at all, skip drawing this frame
+        if not np.any(valid_mask):
+            return virtual_frame;
+        
+        anchor_indices_mask = np.zeros(num_points, dtype=bool)
+        anchor_indices_mask[ANCHOR_INDICES] = True
+        active_anchors_mask = anchor_indices_mask & valid_mask
+        
+        # 2. Center coordinates safely using ONLY the valid tracked points
+        center_of_mass = np.mean(pts_3d_clean[active_anchors_mask], axis=0)
+        pts_3d_clean[valid_mask] -= center_of_mass
+        
+        #with self._lock:
+        c_p, s_p = np.cos(self.pitch), np.sin(self.pitch)
+        c_y, s_y = np.cos(self.yaw), np.sin(self.yaw)
+        c_r, s_r = np.cos(self.roll ), np.sin(self.roll )
+        tvec = np.array([0, 0, self.distance], dtype=np.float64)
+            
+        R_pitch = np.array([
+            [1, 0, 0],
+            [0, c_p, -s_p],
+            [0, s_p, c_p]
+        ])
+        R_yaw = np.array([
+            [c_y, 0, s_y],
+            [0, 1, 0],
+            [-s_y, 0, c_y]
+        ])
+        R_roll = np.array([
+            [c_r, -s_r, 0],
+            [s_r, c_r, 0],
+            [0, 0, 1]
+        ])
+        R_combined = R_pitch @ R_yaw @ R_roll
+        rvec, _ = cv2.Rodrigues(R_combined)
+            
+            
+        # 3. Project 3D space onto 2D virtual screen
+        # (Passing dummy 0,0,0 values for invalid entries is safe because we ignore them later)
+        points_2d, _ = cv2.projectPoints(pts_3d_clean, rvec, tvec, self.K, self.dist_coeffs)
+        points_2d = np.int32(points_2d).reshape(-1, 2)
+
+        # 4. Draw the Skeleton Canvas
+        
+
+        for start_idx, end_idx in mp.solutions.pose.POSE_CONNECTIONS:
+            if start_idx < num_points and end_idx < num_points:
+                if valid_mask[start_idx] and valid_mask[end_idx]:
+                    pt1 = tuple(points_2d[start_idx])
+                    pt2 = tuple(points_2d[end_idx])
+                    cv2.line(virtual_frame, pt1, pt2, (0, 255, 0), 2)  # Green bones
+
+        # Draw joints (Dots) - Only for valid landmarks
+        for i in range(num_points):
+            if valid_mask[i]:
+                pt = tuple(points_2d[i])
+                cv2.circle(virtual_frame, pt, 4, (0, 0, 255), -1) # Red joints
+        
+        return virtual_frame
+    
+    def update_view_angles(self, pitch, yaw, roll, distance=10.0):
+        with self._lock:
+            self.pitch = np.radians(pitch)
+            self.yaw = np.radians(yaw)
+            self.roll = np.radians(roll)
+            self.distance = distance
+        
