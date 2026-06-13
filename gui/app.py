@@ -59,7 +59,7 @@ class App(ctk.CTk):
         self.opencv_thread2 = OpenCVThread(self.sync_queue2, self.processed_queue2, self.ml_running_event)
         
         # Create Evaluation Thread
-        self.eval_thread = EvalThread(self.processed_queue1, self.processed_queue2, self.output_image_queue, self.calibrator, self.running_event, self.show_camera1)
+        self.eval_thread = EvalThread(self.processed_queue1, self.processed_queue2, self.output_image_queue, self.calibrator, self.running_event, (640,480))
         
         # Start Threads
         self.video_thread1.start()
@@ -71,7 +71,7 @@ class App(ctk.CTk):
 
         # Configure Grid Layout (2 Columns: Left for Video, Right for Controls)
         self.grid_rowconfigure(0, weight=4)  # Video column takes up more space
-        self.grid_rowconfigure(1, weight=1, minsize=150)  # Sidebar column
+        self.grid_rowconfigure(1, weight=1, minsize=150)  # Bottombar column
         self.grid_columnconfigure(0, weight=1)
 
         # Create UI Elements
@@ -85,32 +85,33 @@ class App(ctk.CTk):
         self.update_video_feed()
 
     def _create_widgets(self):
-        # 1. Video Display Area (Left Side)
+        # Video Display Area
         self.video_label = ctk.CTkLabel(self, text="Loading Camera Feed...", fg_color="#1a1a1a")
         self.video_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
-        # 2. Control Sidebar (Right Side)
-        self.sidebar = ctk.CTkFrame(self, corner_radius=10)
-        self.sidebar.grid(row=1, column=0, padx=(0, 20), pady=20, sticky="nsew")
-        self.sidebar.grid_columnconfigure(0, weight=1)
-        self.sidebar.grid_rowconfigure(0, weight=1)
-        self.sidebar.grid_columnconfigure((1, 2, 3), weight=5)
+        # Control Bottombar 
+        self.bottombar = ctk.CTkFrame(self, corner_radius=10)
+        self.bottombar.grid(row=1, column=0, padx=(0, 20), pady=20, sticky="nsew")
+        self.bottombar.grid_columnconfigure(0, weight=1)
+        self.bottombar.grid_rowconfigure(0, weight=1)
+        self.bottombar.grid_columnconfigure((1, 2, 3), weight=5)
+        self.bottombar.grid_rowconfigure((0,1), weight=1)
 
-        # Sidebar Title
-        self.sidebar_label = ctk.CTkLabel(self.sidebar, text="CONTROLS", font=ctk.CTkFont(size=16, weight="bold"))
-        self.sidebar_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        # Bottombar Title
+        self.bottombar_label = ctk.CTkLabel(self.bottombar, text="CONTROLS", font=ctk.CTkFont(size=16, weight="bold"))
+        self.bottombar_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.switch_cam_btn = ctk.CTkButton(
-            self.sidebar, 
+        self.switch_view_btn = ctk.CTkButton(
+            self.bottombar, 
             text="Switch Camera", 
             fg_color="#1f538d", 
             hover_color="#14375e",
-            command=self.switch_cam
+            command=self.switch_view
         )
-        self.switch_cam_btn.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+        self.switch_view_btn.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
 
         self.calib_btn = ctk.CTkButton(
-            self.sidebar, 
+            self.bottombar, 
             text="Calibrate Cameras", 
             fg_color="#1f538d", 
             hover_color="#14375e",
@@ -120,13 +121,26 @@ class App(ctk.CTk):
 
         # System Shutdown Button
         self.shutdown_btn = ctk.CTkButton(
-            self.sidebar, 
+            self.bottombar, 
             text="System Shutdown", 
             fg_color="#942a2a", 
             hover_color="#661c1c",
             command=self.shutdown_pi
         )
         self.shutdown_btn.grid(row=0, column=3, padx=20, pady=20, sticky="nsew")
+        
+        self.dist_slider = ctk.CTkSlider(self.bottombar, from_=1000, to=5000, command=self.on_slider_move)
+        self.dist_slider.set(3000)
+        self.dist_slider.grid(row=1, column=2, padx=20, pady=20, sticky="nsew")
+        
+        self.yaw_slider = ctk.CTkSlider(self.bottombar, from_=-180, to=180, command=self.on_slider_move)
+        self.yaw_slider.set(0)
+        self.yaw_slider.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
+        
+    def on_slider_move(self, value):
+        yaw = self.yaw_slider.get()
+        dist = self.dist_slider.get()
+        self.eval_thread.update_view_angles(pitch=0, yaw=yaw, roll=0, distance=dist)
 
     def update_video_feed(self):
         """Checks the queue for new frames and updates the UI."""
@@ -163,11 +177,12 @@ class App(ctk.CTk):
         # You can also set a default window size to fall back to
         self.geometry("720x1280")
 
-    def switch_cam(self):
-        if self.show_camera1.is_set():
-            self.show_camera1.clear()
+    def switch_view(self):
+        viewport = self.eval_thread.get_viewport()
+        if not self.calibrator.is_calibrated() and viewport == 1 or viewport == 2:
+            self.eval_thread.set_viewport(0)
         else:
-            self.show_camera1.set()
+            self.eval_thread.set_viewport(viewport+1)
         print("Switch Action Triggered!")
         
     def calibrate_cam(self):
@@ -209,11 +224,11 @@ class App(ctk.CTk):
 
     def on_closing(self):
         """Cleans up background threads safely before closing the window."""
-        self.running_event.clear()  # Tell the video thread loop to stop
+        self.running_event.clear()
         self.ml_running_event.set()
         if self.video_thread1.is_alive():
-            self.video_thread1.join(timeout=1.0) # Wait for thread to finish
+            self.video_thread1.join(timeout=1.0)
         if self.video_thread2.is_alive():
-            self.video_thread2.join(timeout=1.0) # Wait for thread to finish
+            self.video_thread2.join(timeout=1.0)
         self.destroy()
         sys.exit(0)

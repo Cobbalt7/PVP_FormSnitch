@@ -1,3 +1,4 @@
 models
 __pycache__
 body_points_data.csv
+stereo_calibration.npz

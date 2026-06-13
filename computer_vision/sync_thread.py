@@ -4,16 +4,6 @@ import threading
 
 class SyncManagerThread(threading.Thread):
     def __init__(self, input_q1, input_q2, output_q1, output_q2, running_event, max_tolerance=0.005):
-        """
-        A generic thread that pairs elements from two input queues based on proximity of timestamps.
-        
-        :param input_q1: Queue containing items from Source 1 -> Format: {"timestamp": float, "data": Any}
-        :param input_q2: Queue containing items from Source 2 -> Format: {"timestamp": float, "data": Any}
-        :param output_q1: Destination queue for synchronized items from Source 1
-        :param output_q2: Destination queue for synchronized items from Source 2
-        :param running_event: threading.Event to control loop lifecycle
-        :param max_tolerance: Maximum allowable time difference (in seconds) between pairs
-        """
         super().__init__()
         self.input_q1 = input_q1
         self.input_q2 = input_q2
