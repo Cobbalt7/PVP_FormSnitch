@@ -253,7 +253,7 @@ class App(ctk.CTk):
             )
         )
 
-    def _on_calibration_complete(self):
+    def _on_calibration_complete(self, success):
         self.ml_running_event.set()
         self.calib_btn.configure(state="normal", text="Calibrate Cameras")
         
