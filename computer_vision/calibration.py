@@ -61,7 +61,7 @@ class Calibrator:
                     progress_callback(len(images1), total_images)
 
             except queue.Empty:
-                time.sleep(0.01)
+                time.sleep(0.1)
         time.sleep(2)
 
         while len(images1) < static_imag + hr_imag:
@@ -73,7 +73,7 @@ class Calibrator:
                     progress_callback(len(images1), total_images)
 
             except queue.Empty:
-                time.sleep(0.01)
+                time.sleep(0.1)
         time.sleep(2)
 
         while len(images1) < total_images:
@@ -85,7 +85,7 @@ class Calibrator:
                     progress_callback(len(images1), total_images)
 
             except queue.Empty:
-                time.sleep(0.01)
+                time.sleep(0.1)
                 
         with self._lock:
             threedpoints, twodpoints1, twodpoints2 = self._parse_images(images1, images2, objectp3d, total_images)
