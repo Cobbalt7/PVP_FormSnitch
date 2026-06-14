@@ -56,6 +56,7 @@ class Calibrator:
             try:
                 images1.append(frame_q1.get(timeout=1.0))
                 images2.append(frame_q2.get(timeout=1.0))
+                time.sleep(0.1)
 
                 if progress_callback is not None:
                     progress_callback(len(images1), total_images)
@@ -68,6 +69,7 @@ class Calibrator:
             try:
                 images1.append(frame_q1.get(timeout=1.0))
                 images2.append(frame_q2.get(timeout=1.0))
+                time.sleep(0.1)
 
                 if progress_callback is not None:
                     progress_callback(len(images1), total_images)
@@ -80,6 +82,7 @@ class Calibrator:
             try:
                 images1.append(frame_q1.get(timeout=1.0))
                 images2.append(frame_q2.get(timeout=1.0))
+                time.sleep(0.1)
 
                 if progress_callback is not None:
                     progress_callback(len(images1), total_images)
