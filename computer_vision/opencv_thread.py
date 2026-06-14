@@ -5,7 +5,6 @@ import mediapipe as mp
 import computer_vision.angles_and_evaluation as angev
 mp_pose = mp.solutions.pose
 
-# --- THREAD 2: MACHINE LEARNING WORKER (The Heavy Lifter) ---
 class OpenCVThread(threading.Thread):
     def __init__(self, raw_queue, processed_queue, running_event):
         super().__init__()
@@ -23,9 +22,6 @@ class OpenCVThread(threading.Thread):
                 # 1. Grab the RAW frame (blocks until a frame is available)
                 frame = self.raw_queue.get(timeout=1.0)
                 
-                # --------------------------------------------------------
-                # RUN YOUR MACHINE LEARNING INFERENCE HERE
-                # --------------------------------------------------------
                 ml_result = self._infer_pose(frame)
                 if ml_result is not None:
                     data = {"frame": frame, "ml_result": ml_result}

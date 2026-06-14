@@ -52,14 +52,14 @@ class App(ctk.CTk):
         self.video_thread2 = VideoCaptureThread(video_source2, self.raw_queue2, self.running_event)
         
         # Create Synchronization Thread
-        self.sync_thread = SyncManagerThread(self.raw_queue1, self.raw_queue2, self.sync_queue1, self.sync_queue2, self.running_event, 0.01)
+        self.sync_thread = SyncManagerThread(self.raw_queue1, self.raw_queue2, self.sync_queue1, self.sync_queue2, self.running_event, 0.005)
         
         # Create ML Threads
         self.opencv_thread1 = OpenCVThread(self.sync_queue1, self.processed_queue1, self.ml_running_event)
         self.opencv_thread2 = OpenCVThread(self.sync_queue2, self.processed_queue2, self.ml_running_event)
         
         # Create Evaluation Thread
-        self.eval_thread = EvalThread(self.processed_queue1, self.processed_queue2, self.output_image_queue, self.calibrator, self.running_event, (640,480))
+        self.eval_thread = EvalThread(self.processed_queue1, self.processed_queue2, self.output_image_queue, self.calibrator, self.running_event, (480,640))
         
         # Start Threads
         self.video_thread1.start()
@@ -95,7 +95,8 @@ class App(ctk.CTk):
         self.bottombar.grid_columnconfigure(0, weight=1)
         self.bottombar.grid_rowconfigure(0, weight=1)
         self.bottombar.grid_columnconfigure((1, 2, 3), weight=5)
-        self.bottombar.grid_rowconfigure((0,1), weight=1)
+        self.bottombar.grid_rowconfigure(0, weight=1)
+        self.bottombar.grid_rowconfigure(1, weight=1)
 
         # Bottombar Title
         self.bottombar_label = ctk.CTkLabel(self.bottombar, text="CONTROLS", font=ctk.CTkFont(size=16, weight="bold"))
@@ -131,11 +132,11 @@ class App(ctk.CTk):
         
         self.dist_slider = ctk.CTkSlider(self.bottombar, from_=1000, to=5000, command=self.on_slider_move)
         self.dist_slider.set(3000)
-        self.dist_slider.grid(row=1, column=2, padx=20, pady=20, sticky="nsew")
+        self.dist_slider.grid(row=1, column=2, padx=1, pady=1, sticky="nsew")
         
         self.yaw_slider = ctk.CTkSlider(self.bottombar, from_=-180, to=180, command=self.on_slider_move)
         self.yaw_slider.set(0)
-        self.yaw_slider.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
+        self.yaw_slider.grid(row=1, column=1, padx=1, pady=1, sticky="nsew")
         
     def on_slider_move(self, value):
         yaw = self.yaw_slider.get()
