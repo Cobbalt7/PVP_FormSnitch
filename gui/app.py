@@ -121,7 +121,7 @@ class App(ctk.CTk):
 
         self.switch_view_btn = ctk.CTkButton(
             self.bottombar, 
-            text="Switch Camera", 
+            text="Switch View", 
             fg_color="#1f538d", 
             hover_color="#14375e",
             command=self.switch_view
@@ -197,10 +197,7 @@ class App(ctk.CTk):
 
     def switch_view(self):
         viewport = self.eval_thread.get_viewport()
-        if not self.calibrator.is_calibrated() and viewport == 1 or viewport == 2:
-            self.eval_thread.set_viewport(0)
-        else:
-            self.eval_thread.set_viewport(viewport+1)
+        self.eval_thread.set_viewport((viewport + 1) % 2)
         print("Switch Action Triggered!")
     
     def _set_calibration_instruction(self, text):
