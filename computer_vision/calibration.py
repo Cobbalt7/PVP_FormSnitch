@@ -47,9 +47,9 @@ class Calibrator:
 
         images1 = []
         images2 = []
-        static_imag = 30
-        hr_imag = 50
-        vr_imag = 50
+        static_imag = 10
+        hr_imag = 20
+        vr_imag = 20
         total_images = static_imag + hr_imag + vr_imag
 
         while len(images1) < static_imag:
@@ -61,8 +61,8 @@ class Calibrator:
                     progress_callback(len(images1), total_images)
 
             except queue.Empty:
-                time.sleep(0.001)
-        time.sleep(1)
+                time.sleep(0.01)
+        time.sleep(2)
 
         while len(images1) < static_imag + hr_imag:
             try:
@@ -73,8 +73,8 @@ class Calibrator:
                     progress_callback(len(images1), total_images)
 
             except queue.Empty:
-                time.sleep(0.001)
-        time.sleep(1)
+                time.sleep(0.01)
+        time.sleep(2)
 
         while len(images1) < total_images:
             try:
@@ -85,7 +85,7 @@ class Calibrator:
                     progress_callback(len(images1), total_images)
 
             except queue.Empty:
-                time.sleep(0.001)
+                time.sleep(0.01)
                 
         with self._lock:
             threedpoints, twodpoints1, twodpoints2 = self._parse_images(images1, images2, objectp3d, total_images)
