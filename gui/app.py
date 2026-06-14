@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import tkinter as tk
 import queue
@@ -88,6 +88,23 @@ class App(ctk.CTk):
         # Video Display Area
         self.video_label = ctk.CTkLabel(self, text="Loading Camera Feed...", fg_color="#1a1a1a")
         self.video_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+
+        #Calibration instructions
+        self.calib_instruction_label = ctk.CTkLabel(
+        self,
+        text="",
+        font=ctk.CTkFont(size=28, weight="bold"),
+        text_color="white",
+        fg_color="#000000"
+        )
+
+        self.calib_instruction_label.grid(
+        row=0,
+        column=0,
+        padx=40,
+        pady=40,
+        sticky="s"
+        )
 
         # Control Bottombar 
         self.bottombar = ctk.CTkFrame(self, corner_radius=10)
@@ -184,7 +201,10 @@ class App(ctk.CTk):
         else:
             self.eval_thread.set_viewport(viewport+1)
         print("Switch Action Triggered!")
-        
+    
+    def _set_calibration_instruction(self, text):
+        self.calib_instruction_label.configure(text=text)
+
     def calibrate_cam(self):
         self.calib_btn.configure(state="disabled", text="Calibrating...")
         self.ml_running_event.clear()
@@ -194,23 +214,45 @@ class App(ctk.CTk):
         
     def _run_calibration_async(self):
         self.after(0, lambda: self.calib_btn.configure(text="Prepare checkerboard..."))
+        self.after(0, lambda: self._set_calibration_instruction(
+            "Paruoškite šachmatų lentą.\nLaikykite ją taip, kad ją matytų abi kameros."
+        ))
+
         time.sleep(5)
-    
-        self.calibrator.calibrate(
+
+        success = self.calibrator.calibrate(
             self.sync_queue1,
             self.sync_queue2,
             progress_callback=self._update_calibration_progress
         )
 
-        self.after(0, self._on_calibration_complete)
+        self.after(0, lambda: self._on_calibration_complete(success))
 
     def _update_calibration_progress(self, current, total):
+        if current <= 30:
+            instruction = (
+                f"1 etapas: laikykite lentą ramiai.\n"
+                f"Kadras {current}/{total}"
+            )
+        elif current <= 80:
+            instruction = (
+                f"2 etapas: lėtai judinkite lentą į kairę ir dešinę.\n"
+                f"Kadras {current}/{total}"
+            )
+        else:
+            instruction = (
+                f"3 etapas: lėtai judinkite lentą aukštyn ir žemyn.\n"
+                f"Kadras {current}/{total}"
+            )
+
         self.after(
             0,
-            lambda: self.calib_btn.configure(
-                text=f"Calibrating... {current}/{total}"
+            lambda: (
+                self.calib_btn.configure(text=f"Calibrating... {current}/{total}"),
+                self._set_calibration_instruction(instruction)
             )
         )
+
     def _on_calibration_complete(self):
         self.ml_running_event.set()
         self.calib_btn.configure(state="normal", text="Calibrate Cameras")
