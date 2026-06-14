@@ -216,7 +216,7 @@ class EvalThread(threading.Thread):
         num_points = len(coords)
         virtual_frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
             
-        # 1. Create a clean array and a validity mask
+        # Create a clean array and a validity mask
         pts_3d_clean = np.zeros((num_points, 3), dtype=np.float64)
         valid_mask = np.zeros(num_points, dtype=bool)
         
@@ -233,11 +233,10 @@ class EvalThread(threading.Thread):
         anchor_indices_mask[ANCHOR_INDICES] = True
         active_anchors_mask = anchor_indices_mask & valid_mask
         
-        # 2. Center coordinates safely using ONLY the valid tracked points
+        # Center coordinates safely using ONLY the valid tracked points
         center_of_mass = np.mean(pts_3d_clean[active_anchors_mask], axis=0)
         pts_3d_clean[valid_mask] -= center_of_mass
         
-        #with self._lock:
         c_p, s_p = np.cos(self.pitch), np.sin(self.pitch)
         c_y, s_y = np.cos(self.yaw), np.sin(self.yaw)
         c_r, s_r = np.cos(self.roll ), np.sin(self.roll )
@@ -262,12 +261,12 @@ class EvalThread(threading.Thread):
         rvec, _ = cv2.Rodrigues(R_combined)
             
             
-        # 3. Project 3D space onto 2D virtual screen
+        # Project 3D space onto 2D virtual screen
         # (Passing dummy 0,0,0 values for invalid entries is safe because we ignore them later)
         points_2d, _ = cv2.projectPoints(pts_3d_clean, rvec, tvec, self.K, self.dist_coeffs)
         points_2d = np.int32(points_2d).reshape(-1, 2)
 
-        # 4. Draw the Skeleton Canvas
+        # Draw the Skeleton Canvas
         
 
         for start_idx, end_idx in mp.solutions.pose.POSE_CONNECTIONS:
