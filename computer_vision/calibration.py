@@ -47,7 +47,34 @@ class Calibrator:
 
         images1 = []
         images2 = []
-        total_images = 30
+        static_imag = 30
+        hr_imag = 50
+        vr_imag = 50
+        total_images = static_imag + hr_imag + vr_imag
+
+        while len(images1) < static_imag:
+            try:
+                images1.append(frame_q1.get(timeout=1.0))
+                images2.append(frame_q2.get(timeout=1.0))
+
+                if progress_callback is not None:
+                    progress_callback(len(images1), total_images)
+
+            except queue.Empty:
+                time.sleep(0.001)
+        time.sleep(1)
+
+        while len(images1) < static_imag + hr_imag:
+            try:
+                images1.append(frame_q1.get(timeout=1.0))
+                images2.append(frame_q2.get(timeout=1.0))
+
+                if progress_callback is not None:
+                    progress_callback(len(images1), total_images)
+
+            except queue.Empty:
+                time.sleep(0.001)
+        time.sleep(1)
 
         while len(images1) < total_images:
             try:
@@ -61,7 +88,7 @@ class Calibrator:
                 time.sleep(0.001)
                 
         with self._lock:
-            threedpoints, twodpoints1, twodpoints2 = self._parse_images(images1, images2, objectp3d, 30)
+            threedpoints, twodpoints1, twodpoints2 = self._parse_images(images1, images2, objectp3d, total_images)
 
             if not threedpoints:
                 print("Error: No checkerboards detected in captured frames.")
