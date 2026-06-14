@@ -104,6 +104,8 @@ class EvalThread(threading.Thread):
 
             except queue.Empty:
                 pass
+            except Exception as e:
+                print("EvalThread error:", e)
         self.csv_file.close()
     
     def _evaluate(self, body_angles):
@@ -195,28 +197,64 @@ class EvalThread(threading.Thread):
         return self.viewport
     
     def set_viewport(self, view_num):
-        if view_num < 3:
+        if view_num < 2:
             with self._lock:
                 self.viewport = view_num
-           
+     
+    def _draw_split_screen(self, cam_frame1, cam_frame2, ml_result1, ml_result2):
+        frame1 = self._draw_landmarks(cam_frame1.copy(), ml_result1)
+        frame2 = self._draw_landmarks(cam_frame2.copy(), ml_result2)
+
+        output_width = self.width
+        output_height = self.height
+
+        half_width = output_width // 2
+
+        frame1 = cv2.resize(frame1, (half_width, output_height))
+        frame2 = cv2.resize(frame2, (half_width, output_height))
+
+        combined = cv2.hconcat([frame1, frame2])
+
+        cv2.putText(
+            combined,
+            "Camera 1",
+            (30, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255, 255, 255),
+            2
+        )
+
+        cv2.putText(
+            combined,
+            "Camera 2",
+            (half_width + 30, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255, 255, 255),
+            2
+        )
+
+        return combined
+
     def _draw_frame(self, cam_frame1, cam_frame2, ml_result1, ml_result2, points_3d):
         with self._lock:
             match(self.viewport):
                 case 0:
-                    frame = self._draw_landmarks(cam_frame1, ml_result1)
+                    print("VIEW: SPLIT SCREEN")
+                    frame = self._draw_split_screen(cam_frame1, cam_frame2, ml_result1, ml_result2)
                 case 1:
-                    frame = self._draw_landmarks(cam_frame2, ml_result2)
-                case 2:
+                    print("VIEW: 3D POSE")
                     frame = self._draw_3d_pose(points_3d)
                 case _:
-                    frame = self._draw_landmarks(cam_frame1, ml_result1)
+                    frame = self._draw_split_screen(cam_frame1, cam_frame2, ml_result1, ml_result2)
         return frame
     
     def _draw_3d_pose(self, coords):
         num_points = len(coords)
         virtual_frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
             
-        # Create a clean array and a validity mask
+        # 1. Create a clean array and a validity mask
         pts_3d_clean = np.zeros((num_points, 3), dtype=np.float64)
         valid_mask = np.zeros(num_points, dtype=bool)
         
@@ -233,10 +271,11 @@ class EvalThread(threading.Thread):
         anchor_indices_mask[ANCHOR_INDICES] = True
         active_anchors_mask = anchor_indices_mask & valid_mask
         
-        # Center coordinates safely using ONLY the valid tracked points
+        # 2. Center coordinates safely using ONLY the valid tracked points
         center_of_mass = np.mean(pts_3d_clean[active_anchors_mask], axis=0)
         pts_3d_clean[valid_mask] -= center_of_mass
         
+        #with self._lock:
         c_p, s_p = np.cos(self.pitch), np.sin(self.pitch)
         c_y, s_y = np.cos(self.yaw), np.sin(self.yaw)
         c_r, s_r = np.cos(self.roll ), np.sin(self.roll )
@@ -261,12 +300,12 @@ class EvalThread(threading.Thread):
         rvec, _ = cv2.Rodrigues(R_combined)
             
             
-        # Project 3D space onto 2D virtual screen
+        # 3. Project 3D space onto 2D virtual screen
         # (Passing dummy 0,0,0 values for invalid entries is safe because we ignore them later)
         points_2d, _ = cv2.projectPoints(pts_3d_clean, rvec, tvec, self.K, self.dist_coeffs)
         points_2d = np.int32(points_2d).reshape(-1, 2)
 
-        # Draw the Skeleton Canvas
+        # 4. Draw the Skeleton Canvas
         
 
         for start_idx, end_idx in mp.solutions.pose.POSE_CONNECTIONS:
