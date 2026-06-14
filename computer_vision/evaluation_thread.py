@@ -208,12 +208,14 @@ class EvalThread(threading.Thread):
         output_width = self.width
         output_height = self.height
 
-        half_width = output_width // 2
+        half_height = output_height // 2
 
-        frame1 = cv2.resize(frame1, (half_width, output_height))
-        frame2 = cv2.resize(frame2, (half_width, output_height))
+        # Kiekviena kamera užima pusę ekrano aukščio
+        frame1 = cv2.resize(frame1, (output_width, half_height))
+        frame2 = cv2.resize(frame2, (output_width, half_height))
 
-        combined = cv2.hconcat([frame1, frame2])
+        # Dedame vieną virš kitos
+        combined = cv2.vconcat([frame1, frame2])
 
         cv2.putText(
             combined,
@@ -228,7 +230,7 @@ class EvalThread(threading.Thread):
         cv2.putText(
             combined,
             "Camera 2",
-            (half_width + 30, 40),
+            (30, half_height + 40),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,
             (255, 255, 255),
