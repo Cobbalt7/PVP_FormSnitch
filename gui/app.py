@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import tkinter as tk
 import queue
@@ -175,7 +175,7 @@ class App(ctk.CTk):
                 frame_resized = cv2.resize(frame, (img_width, img_height), interpolation=cv2.INTER_LINEAR)
                 
                 # Convert OpenCV BGR format to RGB format
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
                 
                 # Convert to PIL Image and then to CustomTkinter CTkImage
                 pil_img = Image.fromarray(frame_rgb)
@@ -206,6 +206,12 @@ class App(ctk.CTk):
     def _set_calibration_instruction(self, text):
         self.calib_instruction_label.configure(text=text)
 
+        if text:
+            self.calib_instruction_label.grid()
+            self.calib_instruction_label.lift()
+        else:
+            self.calib_instruction_label.grid_remove()
+
     def calibrate_cam(self):
         self.calib_btn.configure(state="disabled", text="Calibrating...")
         self.ml_running_event.clear()
@@ -230,12 +236,12 @@ class App(ctk.CTk):
         self.after(0, lambda: self._on_calibration_complete(success))
 
     def _update_calibration_progress(self, current, total):
-        if current <= 30:
+        if current <= 10:
             instruction = (
                 f"1 etapas: laikykite lentą ramiai.\n"
                 f"Kadras {current}/{total}"
             )
-        elif current <= 80:
+        elif current <= 10+20:
             instruction = (
                 f"2 etapas: lėtai judinkite lentą į kairę ir dešinę.\n"
                 f"Kadras {current}/{total}"
@@ -257,6 +263,7 @@ class App(ctk.CTk):
     def _on_calibration_complete(self, success):
         self.ml_running_event.set()
         self.calib_btn.configure(state="normal", text="Calibrate Cameras")
+        self._set_calibration_instruction("")
         
     def shutdown_pi(self):
         """Safely stops threads and shuts down the Raspberry Pi operating system."""
